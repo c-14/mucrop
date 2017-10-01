@@ -1,16 +1,26 @@
 #include <errno.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sysexits.h>
+#include <unistd.h>
 
 #include <MagickWand/MagickWand.h>
 
+#include "window.h"
 #include "util/error.h"
 
 struct mucrop_core {
 	MagickWand *wand;
-
+	struct mu_window *window;
 	struct mu_error *errlist;
+
+	unsigned char *image;
+	size_t o_width;
+	size_t o_height;
+	size_t width;
+	size_t height;
+	size_t length;
 };
 
 #define RaiseWandException(wand, errlist) \
@@ -23,11 +33,12 @@ struct mucrop_core {
 	description = (char *) MagickRelinquishMemory(description); \
 }
 
-int read_image(struct mucrop_core *core, const char *filename)
+
+int ping_image(struct mucrop_core *core, const char *filename)
 {
 	MagickBooleanType status;
 
-	status = MagickReadImage(core->wand, filename);
+	status = MagickPingImage(core->wand, filename);
 	if (status == MagickFalse) {
 		RaiseWandException(core->wand, &core->errlist);
 		return -1;
@@ -37,9 +48,32 @@ int read_image(struct mucrop_core *core, const char *filename)
 	// Convert Copy of Image to Format (RGBA/YUV/Whatever)
 	// GetImageBlob and destroy copy of Image
 	/* MagickResetIterator(core->wand); */
-	/* MagickSetImageFormat(core->wand,"xpm"); */
-	/* image = MagickGetImageBlob(core->wand,&length); */
+	core->o_width  = MagickGetImageWidth(core->wand);
+	core->o_height = MagickGetImageHeight(core->wand);
 
+	return 0;
+}
+
+int read_image(struct mucrop_core *core, const char *filename)
+{
+	MagickBooleanType status;
+
+	core->width = core->o_width;
+	core->height = core->o_height;
+
+	status = MagickReadImage(core->wand, filename);
+	if (status == MagickFalse) {
+		RaiseWandException(core->wand, &core->errlist);
+		return -1;
+	}
+
+	scale_to_window(&core->width, &core->height, core->window->width, core->window->height);
+	MagickResizeImage(core->wand, core->width, core->height, LanczosFilter);
+
+	MagickSetImageFormat(core->wand, "bgra");
+	core->image = MagickGetImageBlob(core->wand, &core->length);
+
+	ClearMagickWand(core->wand);
 
 	return 0;
 }
@@ -47,6 +81,9 @@ int read_image(struct mucrop_core *core, const char *filename)
 int main(int argc, const char *argv[])
 {
 	struct mucrop_core core;
+	xcb_generic_event_t *ev;
+	const char *filename = argv[1];
+	bool first = true;
 	int ret = 0;
 
 	MagickWandGenesis();
@@ -59,16 +96,67 @@ int main(int argc, const char *argv[])
 		goto fail;
 	}
 
-	/* for (size_t i = 1; i < argc; i++) { */
-	/* 	read_image(wand, argv[i]); */
-	/* } */
+	ret = ping_image(&core, filename);
+	if (ret != 0) {
+		goto fail;
+	}
 
+	core.window = create_window(&core.errlist, core.o_width, core.o_height);
+	if (core.window == NULL) {
+		ret = EX_OSERR;
+		goto fail;
+	}
+	core.width = core.window->width;
+	core.height = core.window->height;
+
+	create_pixmap(&core.errlist, core.window, core.width, core.height);
+	create_gc(&core.errlist, core.window);
+
+	read_image(&core, filename);
+	load_image(&core.errlist, core.window, core.image, core.length, core.width, core.height);
+
+	map_window(core.window);
+
+	while ((ev = xcb_wait_for_event(core.window->c))) {
+		switch (ev->response_type & ~0x80) {
+			case XCB_KEY_PRESS:
+				/* free(ev); */
+				/* goto fail; */
+				break;
+			case XCB_BUTTON_PRESS:
+				break;
+			case XCB_BUTTON_RELEASE:
+				break;
+			case XCB_EXPOSE:
+				if (first) {
+					first = false;
+					update_geometry(&core.errlist, core.window);
+					read_image(&core, filename);
+					load_image(&core.errlist, core.window, core.image, core.length, core.width, core.height);
+				}
+				handle_expose(&core.errlist, core.window, core.width, core.height, (xcb_expose_event_t *)ev);
+				break;
+			case XCB_RESIZE_REQUEST:
+				resize_window(&core.errlist, core.window, (xcb_resize_request_event_t *)ev);
+				break;
+			default:
+				break;
+		}
+		free(ev);
+	}
 
 fail:
+	ret |= process_errors(core.errlist);
 	free_errlist(&core.errlist);
+	destroy_window(&core.window);
 
+	/* MagickRelinquishMemory(core.image); */
+	ClearMagickWand(core.wand);
 	core.wand = DestroyMagickWand(core.wand);
 	MagickWandTerminus();
 
+	if (ret < 0) {
+		return EX_SOFTWARE;
+	}
 	return ret;
 }
