@@ -21,6 +21,8 @@ struct mucrop_core {
 	size_t width;
 	size_t height;
 	size_t length;
+
+	bool quit;
 };
 
 #define RaiseWandException(wand, errlist) \
@@ -78,6 +80,18 @@ int read_image(struct mucrop_core *core, const char *filename)
 	return 0;
 }
 
+void handle_keypress(struct mucrop_core *core, xcb_key_press_event_t *key)
+{
+	switch (key->detail) {
+		case 0x35: // q
+			core->quit = true;
+			break;
+		default:
+			printf("%x\n", key->detail);
+			break;
+	}
+}
+
 int main(int argc, const char *argv[])
 {
 	struct mucrop_core core = {};
@@ -117,11 +131,11 @@ int main(int argc, const char *argv[])
 
 	map_window(core.window);
 
-	while ((ev = xcb_wait_for_event(core.window->c))) {
+	while (!core.quit) {
+		ev = xcb_wait_for_event(core.window->c);
 		switch (ev->response_type & ~0x80) {
 			case XCB_KEY_PRESS:
-				/* free(ev); */
-				/* goto fail; */
+				handle_keypress(&core, (xcb_key_press_event_t *)ev);
 				break;
 			case XCB_BUTTON_PRESS:
 				break;
