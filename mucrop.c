@@ -23,6 +23,7 @@ struct mucrop_core {
 	size_t length;
 
 	bool quit;
+	bool wait;
 };
 
 #define RaiseWandException(wand, errlist) \
@@ -131,8 +132,16 @@ int main(int argc, const char *argv[])
 
 	map_window(core.window);
 
+	core.wait = true;
 	while (!core.quit) {
-		ev = xcb_wait_for_event(core.window->c);
+		if (core.wait) {
+			ev = xcb_wait_for_event(core.window->c);
+		} else {
+			ev = xcb_poll_for_event(core.window->c);
+		}
+		if (!ev) {
+			continue;
+		}
 		switch (ev->response_type & ~0x80) {
 			case XCB_KEY_PRESS:
 				handle_keypress(&core, (xcb_key_press_event_t *)ev);
