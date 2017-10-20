@@ -80,7 +80,7 @@ int read_image(struct mucrop_core *core, const char *filename)
 
 int main(int argc, const char *argv[])
 {
-	struct mucrop_core core;
+	struct mucrop_core core = {};
 	xcb_generic_event_t *ev;
 	const char *filename = argv[1];
 	bool first = true;
