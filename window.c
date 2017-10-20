@@ -142,6 +142,7 @@ int load_image(struct mu_error **err, struct mu_window *window, unsigned char *d
 
 int handle_expose(struct mu_error **err, struct mu_window *window, size_t width, size_t height, xcb_expose_event_t *ev)
 {
+	uint16_t src_x = ev->x, dst_x = src_x, src_y = ev->y, dst_y = src_y, c_width = ev->width, c_height = ev->height;
 	if (width < window->width)
 		window->xoff = (window->width - width) / 2;
 	else
@@ -151,8 +152,25 @@ int handle_expose(struct mu_error **err, struct mu_window *window, size_t width,
 	else
 		window->yoff = 0;
 
-	printf("Loading image with offset: x = %hd, y = %hd\n", window->xoff, window->yoff);
-	xcb_copy_area(window->c, window->pix, window->win, window->gc, ev->x, ev->y, ev->x + window->xoff, ev->y + window->yoff, ev->width, ev->height);
+	if (src_x < window->xoff && c_width > window->xoff) {
+		dst_x += window->xoff;
+		c_width -= window->xoff;
+	} else if (src_x < window->xoff || src_x > width + window->xoff) {
+		return 0;
+	} else {
+		src_x -= window->xoff;
+	}
+
+	if (src_y < window->yoff && c_height > window->yoff) {
+		dst_y += window->yoff;
+		c_height -= window->yoff;
+	} else if (src_y < window->yoff || src_y > height + window->yoff) {
+		return 0;
+	} else {
+		src_y -= window->yoff;
+	}
+
+	xcb_copy_area(window->c, window->pix, window->win, window->gc, src_x, src_y, dst_x, dst_y, c_width, c_height);
 	xcb_flush(window->c);
 
 	return 0;
