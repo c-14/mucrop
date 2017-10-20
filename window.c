@@ -52,7 +52,8 @@ struct mu_window *create_window(struct mu_error **err, size_t o_width, size_t o_
 	mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
 	values[0] = window->screen->black_pixel;
 	values[1] = XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_BUTTON_PRESS |
-		XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_RESIZE_REDIRECT;
+		XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_EXPOSURE |
+		XCB_EVENT_MASK_STRUCTURE_NOTIFY;
 
 	printf("Original dimensions: %zux%zu\n", o_width, o_height);
 	window->width = o_width;
@@ -157,17 +158,13 @@ int handle_expose(struct mu_error **err, struct mu_window *window, size_t width,
 	return 0;
 }
 
-int resize_window(struct mu_error **err, struct mu_window *window, xcb_resize_request_event_t *ev)
+int resize_window(struct mu_error **err, struct mu_window *window, xcb_configure_notify_event_t *ev)
 {
-	const uint32_t values[] = { ev->width, ev->height };
-
 	if (window->width == ev->width && window->height == ev->height)
 		return 0;
 
 	window->width = ev->width;
 	window->height = ev->height;
-	xcb_configure_window(window->c, window->win, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, values);
-	xcb_flush(window->c);
 
 	return 0;
 }

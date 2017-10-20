@@ -98,7 +98,6 @@ int main(int argc, const char *argv[])
 	struct mucrop_core core = {};
 	xcb_generic_event_t *ev;
 	const char *filename = argv[1];
-	bool first = true;
 	int ret = 0;
 
 	MagickWandGenesis();
@@ -151,16 +150,12 @@ int main(int argc, const char *argv[])
 			case XCB_BUTTON_RELEASE:
 				break;
 			case XCB_EXPOSE:
-				if (first) {
-					first = false;
-					update_geometry(&core.errlist, core.window);
-					read_image(&core, filename);
-					load_image(&core.errlist, core.window, core.image, core.length, core.width, core.height);
-				}
 				handle_expose(&core.errlist, core.window, core.width, core.height, (xcb_expose_event_t *)ev);
 				break;
-			case XCB_RESIZE_REQUEST:
-				resize_window(&core.errlist, core.window, (xcb_resize_request_event_t *)ev);
+			case XCB_CONFIGURE_NOTIFY:
+				resize_window(&core.errlist, core.window, (xcb_configure_notify_event_t *)ev);
+				/* read_image(&core, filename); */
+				/* load_image(&core.errlist, core.window, core.image, core.length, core.width, core.height); */
 				break;
 			default:
 				break;
