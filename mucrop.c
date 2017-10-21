@@ -161,6 +161,7 @@ int main(int argc, const char *argv[])
 
 	core.wait = true;
 	while (!core.quit) {
+		size_t sizes[4] = { core.width, core.height, core.o_width, core.o_height };
 		if (core.wait) {
 			ev = xcb_wait_for_event(core.window->c);
 		} else {
@@ -171,7 +172,6 @@ int main(int argc, const char *argv[])
 			if (resize) {
 				clock_gettime(CLOCK_MONOTONIC, &now);
 				if (difftimespec(&now, &tp) > 500) {
-					puts("Rereading image");
 					if (read_image(&core, filename) != 0)
 						goto fail;
 					load_image(&core.errlist, core.window, core.image, core.length, core.width, core.height);
@@ -193,13 +193,11 @@ int main(int argc, const char *argv[])
 				handle_expose(&core.errlist, core.window, core.width, core.height, (xcb_expose_event_t *)ev);
 				break;
 			case XCB_CONFIGURE_NOTIFY:
-				if (resize_window(&core.errlist, core.window, core.width, core.height, (xcb_configure_notify_event_t *)ev)) {
+				if (resize_window(&core.errlist, core.window, sizes, (xcb_configure_notify_event_t *)ev)) {
 					core.wait = false;
 					resize = true;
 					clock_gettime(CLOCK_MONOTONIC, &tp);
 				}
-				/* read_image(&core, filename); */
-				/* load_image(&core.errlist, core.window, core.image, core.length, core.width, core.height); */
 				break;
 			default:
 				break;

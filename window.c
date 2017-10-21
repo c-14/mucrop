@@ -201,11 +201,23 @@ int handle_expose(struct mu_error **err, struct mu_window *window, size_t width,
 	return draw_image(err, window, loc, width, height);
 }
 
-int resize_window(struct mu_error **err, struct mu_window *window, size_t width, size_t height, xcb_configure_notify_event_t *ev)
+int resize_window(struct mu_error **err, struct mu_window *window, size_t sizes[4], xcb_configure_notify_event_t *ev)
 {
+	size_t width = sizes[0], height = sizes[1], o_width = sizes[2], o_height = sizes[3];
+
 	if (window->width == ev->width && window->height == ev->height) {
 		return 0;
 	} else if (window->width == ev->width || window->height == ev->height) {
+		window->width = ev->width;
+		window->height = ev->height;
+		return reload_with_offset(err, window, width, height);
+	} else if (width == o_width && height == o_height && width <= ev->width && height <= ev->height) {
+		// Unscaled Case
+		window->width = ev->width;
+		window->height = ev->height;
+		return reload_with_offset(err, window, width, height);
+	} else if ((ev->width <= window->width && width <= ev->width) && (ev->height <= window->height && height <= ev->height)) {
+		// No need to rescale
 		window->width = ev->width;
 		window->height = ev->height;
 		return reload_with_offset(err, window, width, height);
