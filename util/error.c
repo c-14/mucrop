@@ -112,7 +112,7 @@ void push_errf(struct mu_error **list, const char *file, const char *func, uint_
 
 int process_errors(struct mu_error *list)
 {
-	struct mu_error *elem = list->prev;
+	struct mu_error *elem = list;
 	int ret = 0;
 
 	if (elem->ret == 0) {
