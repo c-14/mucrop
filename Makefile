@@ -3,8 +3,8 @@
 
 include config.mk
 
-DEPS    = window.h util/error.h util/mem.h
-OBJS    = mucrop.o window.c util/error.o util/mem.o
+DEPS    = window.h util/error.h util/mem.h util/time.h
+OBJS    = mucrop.o window.c util/error.o util/mem.o util/time.o
 
 .PHONY: all clean
 

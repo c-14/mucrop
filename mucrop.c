@@ -11,6 +11,7 @@
 
 #include "window.h"
 #include "util/error.h"
+#include "util/time.h"
 
 struct mucrop_core {
 	MagickWand *wand;
@@ -82,26 +83,6 @@ int read_image(struct mucrop_core *core, const char *filename)
 	ClearMagickWand(core->wand);
 
 	return 0;
-}
-
-/*
- * Returns the difference between two timespecs in ms
- * x _must_ be larger than y otherwise the result is undefined
- */
-int difftimespec(struct timespec *x, struct timespec *y)
-{
-	int ret = 0;
-	time_t tv_sec = x->tv_sec - y->tv_sec;
-
-	if (x->tv_nsec < y->tv_nsec) {
-		ret = (x->tv_nsec + (1e9) - y->tv_nsec) / 1e6;
-		tv_sec -= 1;
-	} else {
-		ret = (x->tv_nsec - y->tv_nsec) / 1e6;
-	}
-	ret += tv_sec * 1e3;
-
-	return ret;
 }
 
 void handle_keypress(struct mucrop_core *core, xcb_key_press_event_t *key)
