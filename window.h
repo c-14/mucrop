@@ -30,6 +30,6 @@ extern int create_gc(struct mu_error **err, struct mu_window *window);
 
 extern int load_image(struct mu_error **err, struct mu_window *window, unsigned char *data, size_t len, size_t width, size_t height);
 extern int handle_expose(struct mu_error **err, struct mu_window *window, size_t width, size_t height, xcb_expose_event_t *ev);
-extern int resize_window(struct mu_error **err, struct mu_window *window, xcb_configure_notify_event_t *ev);
+extern int resize_window(struct mu_error **err, struct mu_window *window, size_t width, size_t height, xcb_configure_notify_event_t *ev);
 
 #endif

@@ -1,8 +1,10 @@
+#define _POSIX_C_SOURCE 199309L
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sysexits.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <MagickWand/MagickWand.h>
@@ -81,6 +83,26 @@ int read_image(struct mucrop_core *core, const char *filename)
 	return 0;
 }
 
+/*
+ * Returns the difference between two timespecs in ms
+ * x _must_ be larger than y otherwise the result is undefined
+ */
+int difftimespec(struct timespec *x, struct timespec *y)
+{
+	int ret = 0;
+	time_t tv_sec = x->tv_sec - y->tv_sec;
+
+	if (x->tv_nsec < y->tv_nsec) {
+		ret = (x->tv_nsec + (1e9) - y->tv_nsec) / 1e6;
+		tv_sec -= 1;
+	} else {
+		ret = (x->tv_nsec - y->tv_nsec) / 1e6;
+	}
+	ret += tv_sec * 1e3;
+
+	return ret;
+}
+
 void handle_keypress(struct mucrop_core *core, xcb_key_press_event_t *key)
 {
 	switch (key->detail) {
@@ -98,6 +120,8 @@ int main(int argc, const char *argv[])
 	struct mucrop_core core = {};
 	xcb_generic_event_t *ev;
 	const char *filename = argv[1];
+	struct timespec tp;
+	bool resize = false;
 	int ret = 0;
 
 	MagickWandGenesis();
@@ -139,6 +163,17 @@ int main(int argc, const char *argv[])
 			ev = xcb_poll_for_event(core.window->c);
 		}
 		if (!ev) {
+			struct timespec now;
+			if (resize) {
+				clock_gettime(CLOCK_MONOTONIC, &now);
+				if (difftimespec(&now, &tp) > 500) {
+					puts("Rereading image");
+					read_image(&core, filename);
+					load_image(&core.errlist, core.window, core.image, core.length, core.width, core.height);
+					core.wait = true;
+					resize = false;
+				}
+			}
 			continue;
 		}
 		switch (ev->response_type & ~0x80) {
@@ -153,7 +188,11 @@ int main(int argc, const char *argv[])
 				handle_expose(&core.errlist, core.window, core.width, core.height, (xcb_expose_event_t *)ev);
 				break;
 			case XCB_CONFIGURE_NOTIFY:
-				resize_window(&core.errlist, core.window, (xcb_configure_notify_event_t *)ev);
+				if (resize_window(&core.errlist, core.window, core.width, core.height, (xcb_configure_notify_event_t *)ev)) {
+					core.wait = false;
+					resize = true;
+					clock_gettime(CLOCK_MONOTONIC, &tp);
+				}
 				/* read_image(&core, filename); */
 				/* load_image(&core.errlist, core.window, core.image, core.length, core.width, core.height); */
 				break;

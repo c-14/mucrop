@@ -129,33 +129,14 @@ int create_pixmap(struct mu_error **err, struct mu_window *window, size_t width,
 	return 0;
 }
 
-int load_image(struct mu_error **err, struct mu_window *window, unsigned char *data, size_t len, size_t width, size_t height)
+static int draw_image(struct mu_error **err, struct mu_window *window, uint16_t loc[4], size_t im_width, size_t im_height)
 {
-	xcb_image_t *img;
-
-	img = xcb_image_create_native(window->c, width, height, XCB_IMAGE_FORMAT_Z_PIXMAP, window->screen->root_depth, data, len, data);
-	xcb_image_put(window->c, window->pix, window->gc, img, 0, 0, 0);
-	xcb_image_destroy(img);
-
-	return 0;
-}
-
-int handle_expose(struct mu_error **err, struct mu_window *window, size_t width, size_t height, xcb_expose_event_t *ev)
-{
-	uint16_t src_x = ev->x, dst_x = src_x, src_y = ev->y, dst_y = src_y, c_width = ev->width, c_height = ev->height;
-	if (width < window->width)
-		window->xoff = (window->width - width) / 2;
-	else
-		window->xoff = 0;
-	if (height < window->height)
-		window->yoff = (window->height - height) / 2;
-	else
-		window->yoff = 0;
+	uint16_t src_x = loc[0], dst_x = src_x, src_y = loc[1], dst_y = src_y, c_width = loc[2], c_height = loc[3];
 
 	if (src_x < window->xoff && c_width > window->xoff) {
 		dst_x += window->xoff;
 		c_width -= window->xoff;
-	} else if (src_x < window->xoff || src_x > width + window->xoff) {
+	} else if (src_x < window->xoff || src_x > im_width + window->xoff) {
 		return 0;
 	} else {
 		src_x -= window->xoff;
@@ -164,7 +145,7 @@ int handle_expose(struct mu_error **err, struct mu_window *window, size_t width,
 	if (src_y < window->yoff && c_height > window->yoff) {
 		dst_y += window->yoff;
 		c_height -= window->yoff;
-	} else if (src_y < window->yoff || src_y > height + window->yoff) {
+	} else if (src_y < window->yoff || src_y > im_height + window->yoff) {
 		return 0;
 	} else {
 		src_y -= window->yoff;
@@ -176,13 +157,62 @@ int handle_expose(struct mu_error **err, struct mu_window *window, size_t width,
 	return 0;
 }
 
-int resize_window(struct mu_error **err, struct mu_window *window, xcb_configure_notify_event_t *ev)
+static int reload_with_offset(struct mu_error **err, struct mu_window *window, size_t width, size_t height)
 {
-	if (window->width == ev->width && window->height == ev->height)
+	uint16_t loc[4] = { 0, 0, window->width, window->height };
+
+	if (width < window->width)
+		window->xoff = (window->width - width) / 2;
+	else
+		window->xoff = 0;
+	if (height < window->height)
+		window->yoff = (window->height - height) / 2;
+	else
+		window->yoff = 0;
+
+	xcb_clear_area(window->c, 0, window->win, 0, 0, window->width, window->height);
+	
+	return draw_image(err, window, loc, width, height);
+}
+
+int load_image(struct mu_error **err, struct mu_window *window, unsigned char *data, size_t len, size_t width, size_t height)
+{
+	xcb_pixmap_t old_pix = window->pix;
+	xcb_image_t *img;
+
+	// Recreate pixmap here
+	// Create some sort of backing pixmap and then swap them "atomically"?
+	create_pixmap(err, window, width, height);
+
+	img = xcb_image_create_native(window->c, width, height, XCB_IMAGE_FORMAT_Z_PIXMAP, window->screen->root_depth, data, len, data);
+	xcb_image_put(window->c, window->pix, window->gc, img, 0, 0, 0);
+	xcb_image_destroy(img);
+
+	reload_with_offset(err, window, width, height);
+	xcb_free_pixmap(window->c, old_pix);
+
+	return 0;
+}
+
+int handle_expose(struct mu_error **err, struct mu_window *window, size_t width, size_t height, xcb_expose_event_t *ev)
+{
+	uint16_t loc[4] = { ev->x, ev->y, ev->width, ev->height };
+
+	return draw_image(err, window, loc, width, height);
+}
+
+int resize_window(struct mu_error **err, struct mu_window *window, size_t width, size_t height, xcb_configure_notify_event_t *ev)
+{
+	if (window->width == ev->width && window->height == ev->height) {
 		return 0;
+	} else if (window->width == ev->width || window->height == ev->height) {
+		window->width = ev->width;
+		window->height = ev->height;
+		return reload_with_offset(err, window, width, height);
+	}
 
 	window->width = ev->width;
 	window->height = ev->height;
 
-	return 0;
+	return 1;
 }
