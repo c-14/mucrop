@@ -18,11 +18,12 @@ struct mucrop_core {
 	struct mu_error *errlist;
 
 	unsigned char *image;
+	size_t length;
+
 	size_t o_width;
 	size_t o_height;
 	size_t width;
 	size_t height;
-	size_t length;
 
 	bool quit;
 	bool wait;
@@ -150,7 +151,10 @@ int main(int argc, const char *argv[])
 	create_pixmap(&core.errlist, core.window, core.width, core.height);
 	create_gc(&core.errlist, core.window);
 
-	read_image(&core, filename);
+	ret = read_image(&core, filename);
+	if (ret != 0)
+		goto fail;
+
 	load_image(&core.errlist, core.window, core.image, core.length, core.width, core.height);
 
 	map_window(core.window);
@@ -168,7 +172,8 @@ int main(int argc, const char *argv[])
 				clock_gettime(CLOCK_MONOTONIC, &now);
 				if (difftimespec(&now, &tp) > 500) {
 					puts("Rereading image");
-					read_image(&core, filename);
+					if (read_image(&core, filename) != 0)
+						goto fail;
 					load_image(&core.errlist, core.window, core.image, core.length, core.width, core.height);
 					core.wait = true;
 					resize = false;
