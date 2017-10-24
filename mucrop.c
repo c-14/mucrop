@@ -385,12 +385,15 @@ int main(int argc, const char *argv[])
 fail:
 	ret |= process_errors(core.errlist);
 	free_errlist(&core.errlist);
-	destroy_window(&core.window);
+	if (core.window)
+		destroy_window(&core.window);
 
 	/* MagickRelinquishMemory(core.image); */
-	ClearMagickWand(core.wand);
-	core.wand = DestroyMagickWand(core.wand);
-	MagickWandTerminus();
+	if (core.wand) {
+		ClearMagickWand(core.wand);
+		core.wand = DestroyMagickWand(core.wand);
+		MagickWandTerminus();
+	}
 
 	if (ret < 0) {
 		return EX_SOFTWARE;
