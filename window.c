@@ -204,6 +204,7 @@ int handle_expose(struct mu_error **err, struct mu_window *window, size_t width,
 int resize_window(struct mu_error **err, struct mu_window *window, size_t sizes[4], xcb_configure_notify_event_t *ev)
 {
 	size_t width = sizes[0], height = sizes[1], o_width = sizes[2], o_height = sizes[3];
+	int ret;
 
 	if (window->width == ev->width && window->height == ev->height) {
 		return 0;
@@ -225,6 +226,7 @@ int resize_window(struct mu_error **err, struct mu_window *window, size_t sizes[
 
 	window->width = ev->width;
 	window->height = ev->height;
+	ret = reload_with_offset(err, window, width, height);
 
-	return 1;
+	return ret == 0 ? 1 : ret;
 }
