@@ -1,0 +1,40 @@
+Basic Installation
+==================
+
+Dependencies
+------------
+
+A C99 compliant compiler.
+libxcb (and libxcb-image) - https://xcb.freedesktop.org/
+ImageMagick - https://www.imagemagick.org/
+
+pkg-config
+----------
+
+mucrop uses pkg-config to locate its dependencies. If you do not have
+pkg-config, or if your version of a library does not ship the ".pc" files, you
+have to provide the library's build options as arguments to make:
+Example:
+
+	make XCB_CFLAGS="-I/usr/local/include" XCB_LDFLAGS="-L/usr/local/lib -lxcb-image -lxcb"
+
+Compilers and Options
+---------------------
+
+Some systems require unusual options for compilation or linking.
+You can provide these options by passing EXTRA_CFLAGS and EXTRA_LDFLAGS as
+arguments to make.
+Example:
+
+	make CC=gcc EXTRA_CFLAGS="-std=c99"
+
+Compilation
+-----------
+
+1) Enter the src directory
+
+$ cd src
+
+2) Run `make` specifying required options for your system
+
+$ make
