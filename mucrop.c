@@ -264,6 +264,11 @@ int handle_keypress(struct mucrop_core *core, xcb_key_press_event_t *key)
 	return 0;
 }
 
+static void usage(bool err)
+{
+	fputs("usage: mucrop <src_filename> <dst_filename>\n", err ? stderr : stdout);
+}
+
 int main(int argc, const char *argv[])
 {
 	struct mucrop_core core = {};
@@ -273,6 +278,11 @@ int main(int argc, const char *argv[])
 	const char *dst_filename = argv[2];
 	struct timespec tp;
 	int ret = 0;
+
+	if (argc != 3) {
+		usage(true);
+		return EX_USAGE;
+	}
 
 	MagickWandGenesis();
 	core.wand = NewMagickWand();
