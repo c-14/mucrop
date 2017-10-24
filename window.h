@@ -5,6 +5,11 @@
 
 #include "util/error.h"
 
+typedef struct Point {
+	int16_t x;
+	int16_t y;
+} Point;
+
 struct mu_window {
 	xcb_connection_t *c;
 	xcb_screen_t     *screen;
@@ -27,6 +32,9 @@ extern int update_geometry(struct mu_error **err, struct mu_window *window);
 
 extern int create_pixmap(struct mu_error **err, struct mu_window *window, size_t width, size_t height);
 extern int create_gc(struct mu_error **err, struct mu_window *window);
+
+extern int draw_bbox(struct mu_error **err, struct mu_window *window, Point *p1, Point *p2);
+extern int clear_bbox(struct mu_error **err, struct mu_window *window, Point *p1, Point *p2);
 
 extern int load_image(struct mu_error **err, struct mu_window *window, unsigned char *data, size_t len, size_t width, size_t height);
 extern int handle_expose(struct mu_error **err, struct mu_window *window, size_t width, size_t height, xcb_expose_event_t *ev);

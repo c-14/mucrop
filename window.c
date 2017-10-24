@@ -52,8 +52,8 @@ struct mu_window *create_window(struct mu_error **err, size_t o_width, size_t o_
 	mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
 	values[0] = window->screen->black_pixel;
 	values[1] = XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_BUTTON_PRESS |
-		XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_EXPOSURE |
-		XCB_EVENT_MASK_STRUCTURE_NOTIFY;
+		XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_1_MOTION |
+		XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY;
 
 	printf("Original dimensions: %zux%zu\n", o_width, o_height);
 	window->width = o_width;
@@ -229,4 +229,35 @@ int resize_window(struct mu_error **err, struct mu_window *window, size_t sizes[
 	ret = reload_with_offset(err, window, width, height);
 
 	return ret == 0 ? 1 : ret;
+}
+
+int draw_bbox(struct mu_error **err, struct mu_window *window, Point *p1, Point *p2)
+{
+	xcb_rectangle_t rect = { 0, 0, abs(p2->x - p1->x), abs(p2->y - p1->y) };
+	uint16_t loc[4] = { 0, 0, window->width, window->height };
+
+	rect.x = p2->x > p1->x ? p1->x : p2->x;
+	rect.y = p2->y > p1->y ? p1->y : p2->y;
+	loc[0] = 0;
+	loc[1] = 0;
+
+	// TODO: maybe optimize this by storing the last box size/pos and only clearing that
+	draw_image(err, window, loc, window->width, window->height);
+
+	xcb_poly_rectangle(window->c, window->win, window->gc, 1, &rect);
+	xcb_flush(window->c);
+
+	return 0;
+}
+
+int clear_bbox(struct mu_error **err, struct mu_window *window, Point *p1, Point *p2)
+{
+	uint16_t loc[4] = { 0, 0, window->width, window->height };
+	(void)p1;
+	(void)p2;
+
+	draw_image(err, window, loc, window->width, window->height);
+	xcb_flush(window->c);
+
+	return 0;
 }

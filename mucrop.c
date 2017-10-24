@@ -13,11 +13,6 @@
 #include "util/error.h"
 #include "util/time.h"
 
-typedef struct Point {
-	int16_t x;
-	int16_t y;
-} Point;
-
 enum mucrop_states {
 	MU_COMP = (1 << 1),
 	MU_CROP = (1 << 2),
@@ -237,7 +232,17 @@ int crop_image(struct mucrop_core *core, const char *src_filename, const char *d
 	return 1;
 }
 
-void handle_keypress(struct mucrop_core *core, xcb_key_press_event_t *key)
+int handle_mouse_motion(struct mucrop_core *core, Point *bound_origin, xcb_motion_notify_event_t *ev)
+{
+	Point cur_pos = { ev->event_x, ev->event_y };
+
+	if (core->state_flags & MU_COMP) {
+		return draw_bbox(&core->errlist, core->window, bound_origin, &cur_pos);
+	}
+	return 0;
+}
+
+int handle_keypress(struct mucrop_core *core, xcb_key_press_event_t *key)
 {
 	switch (key->detail) {
 		case 0x35: // q
@@ -248,10 +253,12 @@ void handle_keypress(struct mucrop_core *core, xcb_key_press_event_t *key)
 			break;
 		case 0x42: // ESC
 			core->state_flags &= ~MU_COMP;
-			break;
+			return clear_bbox(&core->errlist, core->window, NULL, NULL);
 		default:
 			break;
 	}
+
+	return 0;
 }
 
 int main(int argc, const char *argv[])
@@ -338,6 +345,9 @@ int main(int argc, const char *argv[])
 					} else if (ret < 0)
 						goto fail;
 				}
+				break;
+			case XCB_MOTION_NOTIFY:
+				handle_mouse_motion(&core, &bound_origin, (xcb_motion_notify_event_t *)ev);
 				break;
 			case XCB_EXPOSE:
 				handle_expose(&core.errlist, core.window, core.width, core.height, (xcb_expose_event_t *)ev);
