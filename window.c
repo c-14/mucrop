@@ -17,14 +17,12 @@ void scale_to_window(size_t *width, size_t *height, size_t w_width, size_t w_hei
 		scaling_factor = (double)w_height / (double)*height;
 		*height = w_height;
 		*width = *width * scaling_factor;
-		printf("Image too tall, scaling factor: %g, new dimensions %zux%zu\n", scaling_factor, *width, *height);
 	}
 	if (*width > w_width) {
 		size_t t_width = *width;
 		*width = w_width;
 		scaling_factor = (double)w_width / (double)t_width;
 		*height = *height * scaling_factor;
-		printf("Image too wide, scaling factor: %g, new dimensions %zux%zu\n", scaling_factor, *width, *height);
 	}
 }
 
@@ -55,7 +53,6 @@ struct mu_window *create_window(struct mu_error **err, size_t o_width, size_t o_
 		XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_1_MOTION |
 		XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY;
 
-	printf("Original dimensions: %zux%zu\n", o_width, o_height);
 	window->width = o_width;
 	window->height = o_height;
 	scale_to_window(&window->width, &window->height,
