@@ -192,8 +192,6 @@ int bound_compute(struct mucrop_core *core, Point *bound_origin, xcb_button_rele
 		return 0;
 
 	if (core->state_flags & MU_CROP) {
-		x += core->crop_origin.x;
-		y += core->crop_origin.y;
 		scale_x = (double)core->crop_width / (double)core->width;
 		scale_y = (double)core->crop_height / (double)core->height;
 	} else {
@@ -205,6 +203,11 @@ int bound_compute(struct mucrop_core *core, Point *bound_origin, xcb_button_rele
 	width  *= scale_x;
 	y      *= scale_y;
 	height *= scale_y;
+
+	if (core->state_flags & MU_CROP) {
+		x += core->crop_origin.x;
+		y += core->crop_origin.y;
+	}
 
 	core->crop_origin.x = x;
 	core->crop_origin.y = y;
