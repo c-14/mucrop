@@ -72,7 +72,7 @@ void free_errlist(struct mu_error **list)
 	} \
 }
 
-void push_error(struct mu_error **list, const char *file, const char *func, uint_least8_t line, const char *errmsg, int ret)
+void push_error(struct mu_error **list, const char *file, const char *func, uint_least16_t line, const char *errmsg, int ret)
 {
 	struct mu_error *err = (*list)->prev;
 
@@ -90,7 +90,7 @@ void push_error(struct mu_error **list, const char *file, const char *func, uint
 	*list = err;
 }
 
-void push_errf(struct mu_error **list, const char *file, const char *func, uint_least8_t line, int ret, const char *fmt, ...)
+void push_errf(struct mu_error **list, const char *file, const char *func, uint_least16_t line, int ret, const char *fmt, ...)
 {
 	struct mu_error *err = (*list)->prev;
 	va_list ap;
@@ -122,7 +122,7 @@ int process_errors(struct mu_error *list)
 	fputs("Encountered fatal error during processing: \n", stderr);
 	do {
 		ret = -1;
-		fprintf(stderr, "\t%s:%"  PRIuLEAST8 " in %s, %s\n", elem->file, elem->line, elem->func, elem->errmsg);
+		fprintf(stderr, "\t%s:%"  PRIuLEAST16 " in %s, %s\n", elem->file, elem->line, elem->func, elem->errmsg);
 		elem = elem->prev;
 	} while (elem->ret != 0 && elem != list);
 

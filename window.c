@@ -8,6 +8,7 @@
 
 #include "window.h"
 #include "util/error.h"
+#include "util/mem.h"
 
 void scale_to_window(size_t *width, size_t *height, size_t w_width, size_t w_height)
 {
@@ -28,7 +29,9 @@ void scale_to_window(size_t *width, size_t *height, size_t w_width, size_t w_hei
 
 struct mu_window *create_window(struct mu_error **err, size_t o_width, size_t o_height)
 {
-	struct mu_window *window = malloc(sizeof(struct mu_window));
+	struct mu_window *window = mallocz(sizeof(struct mu_window));
+	xcb_void_cookie_t cookie;
+	xcb_generic_error_t *xerr;
 	uint32_t mask = 0;
 	uint32_t values[2];
 	int ret = 0;
@@ -42,7 +45,8 @@ struct mu_window *create_window(struct mu_error **err, size_t o_width, size_t o_
 	ret = xcb_connection_has_error(window->c);
 	if (ret != 0) {
 		MU_PUSH_ERRSTR(err, "Could not create an XCB connection, dying");
-		return window;
+		free(window);
+		return NULL;
 	}
 	window->screen = xcb_setup_roots_iterator(xcb_get_setup(window->c)).data;
 
@@ -58,10 +62,17 @@ struct mu_window *create_window(struct mu_error **err, size_t o_width, size_t o_
 	scale_to_window(&window->width, &window->height,
 			window->screen->width_in_pixels, window->screen->height_in_pixels);
 
-	xcb_create_window(window->c, window->screen->root_depth, window->win,
+	cookie = xcb_create_window(window->c, window->screen->root_depth, window->win,
 			window->screen->root, 0, 0, window->width, window->height, 0,
 			XCB_WINDOW_CLASS_INPUT_OUTPUT, window->screen->root_visual, mask,
 			values);
+	xerr = xcb_request_check(window->c, cookie);
+	if (xerr) {
+		MU_PUSH_ERRF(err, "Could not create window: XCB error %d", xerr->error_code);
+		free(err);
+		free(window);
+		return NULL;
+	}
 
 	return window;
 }
@@ -92,9 +103,12 @@ void destroy_window(struct mu_window **window)
 {
 	struct mu_window *w = *window;
 
-	xcb_free_gc(w->c, w->gc);
-	xcb_free_pixmap(w->c, w->pix);
-	xcb_destroy_window(w->c, w->win);
+	if (w->gc)
+		xcb_free_gc(w->c, w->gc);
+	if (w->pix)
+		xcb_free_pixmap(w->c, w->pix);
+	if (w->win)
+		xcb_destroy_window(w->c, w->win);
 	xcb_disconnect(w->c);
 
 	free(w);

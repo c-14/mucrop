@@ -264,6 +264,12 @@ int handle_keypress(struct mucrop_core *core, xcb_key_press_event_t *key)
 	return 0;
 }
 
+static void handle_x11_error(struct mucrop_core *core)
+{
+	MU_PUSH_ERRSTR(&core->errlist, "Received X11 error, dying");
+	core->state_flags |= MU_QUIT;
+}
+
 static void usage(bool err)
 {
 	fputs("usage: mucrop <src_filename> <dst_filename>\n", err ? stderr : stdout);
@@ -371,6 +377,11 @@ int main(int argc, const char *argv[])
 					core.state_flags |= MU_RESI;
 					clock_gettime(CLOCK_MONOTONIC, &tp);
 				}
+				break;
+				// According to xcb-requests(3), response_type is 0 in error case
+				// Since it never mentions the type for the event, throw a generic error instead.
+			case 0:
+				handle_x11_error(&core);
 				break;
 			default:
 				break;
