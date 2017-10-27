@@ -38,3 +38,7 @@ $ cd src
 2) Run `make` specifying required options for your system
 
 $ make
+
+3) Install mucrop in $(PREFIX) (/usr/local by default)
+
+$ make install
