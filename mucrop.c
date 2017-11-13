@@ -36,6 +36,8 @@ struct mucrop_core {
 	size_t width;
 	size_t height;
 
+	Point bound_origin;
+
 	Point crop_origin;
 	size_t crop_width;
 	size_t crop_height;
@@ -245,6 +247,23 @@ int handle_mouse_motion(struct mucrop_core *core, Point *bound_origin, xcb_motio
 	return 0;
 }
 
+int handle_buttonpress(struct mucrop_core *core, xcb_button_press_event_t *button)
+{
+	switch (button->detail) {
+		case 0x01:
+			if (bound_init(&core->bound_origin, button) > 0)
+				core->state_flags |= MU_COMP;
+			break;
+		case 0x03:
+			core->state_flags &= ~MU_COMP;
+			return clear_bbox(&core->errlist, core->window, NULL, NULL);
+		default:
+			break;
+	}
+
+	return 0;
+}
+
 int handle_keypress(struct mucrop_core *core, xcb_key_press_event_t *key)
 {
 	switch (key->detail) {
@@ -278,7 +297,6 @@ static void usage(bool err)
 int main(int argc, const char *argv[])
 {
 	struct mucrop_core core = {};
-	Point bound_origin = {};
 	xcb_generic_event_t *ev;
 	const char *src_filename = argv[1];
 	const char *dst_filename = argv[2];
@@ -350,13 +368,12 @@ int main(int argc, const char *argv[])
 				handle_keypress(&core, (xcb_key_press_event_t *)ev);
 				break;
 			case XCB_BUTTON_PRESS:
-				if (bound_init(&bound_origin, (xcb_button_press_event_t *)ev) > 0)
-					core.state_flags |= MU_COMP;
+				handle_buttonpress(&core, (xcb_button_press_event_t *)ev);
 				break;
 			case XCB_BUTTON_RELEASE:
 				if (core.state_flags & MU_COMP) {
 					core.state_flags &= ~MU_COMP;
-					ret = bound_compute(&core, &bound_origin, (xcb_button_release_event_t *)ev);
+					ret = bound_compute(&core, &core.bound_origin, (xcb_button_release_event_t *)ev);
 					if (ret > 0) {
 						core.state_flags |= MU_CROP;
 						if (reload_image(&core, src_filename) != 0)
@@ -366,7 +383,7 @@ int main(int argc, const char *argv[])
 				}
 				break;
 			case XCB_MOTION_NOTIFY:
-				handle_mouse_motion(&core, &bound_origin, (xcb_motion_notify_event_t *)ev);
+				handle_mouse_motion(&core, &core.bound_origin, (xcb_motion_notify_event_t *)ev);
 				break;
 			case XCB_EXPOSE:
 				handle_expose(&core.errlist, core.window, core.width, core.height, (xcb_expose_event_t *)ev);
