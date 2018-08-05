@@ -5,7 +5,7 @@ include config.mk
 
 BDIR = $(DESTDIR)/$(PREFIX)
 DEPS = window.h util/error.h util/mem.h util/time.h
-OBJS = mucrop.o window.c util/error.o util/mem.o util/time.o
+OBJS = mucrop.o window.o util/error.o util/mem.o util/time.o
 
 .PHONY: all clean install
 
