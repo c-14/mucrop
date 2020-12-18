@@ -294,7 +294,7 @@ static void handle_x11_error(struct mucrop_core *core)
 
 static void usage(bool err)
 {
-	fputs("usage: mucrop <src_filename> <dst_filename>\n", err ? stderr : stdout);
+	fputs("usage: mucrop <src_filename> [dst_filename]\n", err ? stderr : stdout);
 }
 
 int main(int argc, const char *argv[])
@@ -302,13 +302,20 @@ int main(int argc, const char *argv[])
 	struct mucrop_core core = {};
 	xcb_generic_event_t *ev;
 	const char *src_filename = argv[1];
-	const char *dst_filename = argv[2];
+	const char *dst_filename;
 	struct timespec tp;
 	int ret = 0;
 
-	if (argc != 3) {
-		usage(true);
-		return EX_USAGE;
+	switch (argc) {
+		case 2:
+			dst_filename = src_filename;
+			break;
+		case 3:
+			dst_filename = argv[2];
+			break;
+		default:
+			usage(true);
+			return EX_USAGE;
 	}
 
 	MagickWandGenesis();

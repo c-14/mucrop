@@ -15,10 +15,10 @@ see [INSTALL](INSTALL)
 
 ## USAGE
 
-    mucrop <src_filename> <dst_filename>
+    mucrop <src_filename> [dst_filename]
 
 ### KEYBINDINGS
 
-*   w: writes the cropped image to <dst_filename>
+*   w: writes the cropped image to <dst_filename> if given, otherwise rewrites <src_filename>
 *   q: quits without writing
 * ESC: cancels the current crop operation
