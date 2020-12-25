@@ -6,6 +6,9 @@
 #include <xcb/xcb.h>
 #include <xcb/xcb_image.h>
 
+#include <xkbcommon/xkbcommon.h>
+#include <xkbcommon/xkbcommon-x11.h>
+
 #include "window.h"
 #include "util/error.h"
 #include "util/mem.h"
@@ -24,6 +27,71 @@ void scale_to_window(size_t *width, size_t *height, size_t w_width, size_t w_hei
 		*width = w_width;
 		scaling_factor = (double)w_width / (double)t_width;
 		*height = *height * scaling_factor;
+	}
+}
+
+int init_xkb_state(struct mu_window *window)
+{
+	int32_t device_id = xkb_x11_get_core_keyboard_device_id(window->c);
+	if (device_id == -1) {
+		fputs("Failed to get device_id\n", stderr);
+		return -1;
+	}
+
+	window->keymap = xkb_x11_keymap_new_from_device(window->xkb, window->c, device_id,
+			XKB_KEYMAP_COMPILE_NO_FLAGS);
+	if (window->keymap == NULL) {
+		fputs("Failed to create keymap\n", stderr);
+		return -1;
+	}
+
+	window->keyboard_state = xkb_x11_state_new_from_device(window->keymap, window->c, device_id);
+	if (window->keyboard_state == NULL) {
+		fputs("Failed to create xkb state\n", stderr);
+		return -1;
+	}
+
+	return 0;
+}
+
+int init_xkb(struct mu_window *window)
+{
+	int ret = xkb_x11_setup_xkb_extension(window->c,
+			XKB_X11_MIN_MAJOR_XKB_VERSION, XKB_X11_MIN_MINOR_XKB_VERSION,
+			XKB_X11_SETUP_XKB_EXTENSION_NO_FLAGS, NULL, NULL, NULL, NULL);
+	if (ret != 1) {
+		fputs("Failed to setup xkb extension\n", stderr);
+		return -1;
+	}
+
+	window->xkb = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+	if (window->xkb == NULL) {
+		fputs("Failed to create xkb context\n", stderr);
+		return -1;
+	}
+
+	return init_xkb_state(window);
+}
+
+void deinit_xkb_state(struct mu_window *window)
+{
+	if (window->keyboard_state) {
+		xkb_state_unref(window->keyboard_state);
+		window->keyboard_state = NULL;
+	}
+	if (window->keymap) {
+		xkb_keymap_unref(window->keymap);
+		window->keymap = NULL;
+	}
+}
+
+void deinit_xkb(struct mu_window *window)
+{
+	deinit_xkb_state(window);
+
+	if (window->xkb) {
+		xkb_context_unref(window->xkb);
+		window->xkb = NULL;
 	}
 }
 
@@ -49,6 +117,18 @@ struct mu_window *create_window(struct mu_error **err, size_t o_width, size_t o_
 		return NULL;
 	}
 	window->screen = xcb_setup_roots_iterator(xcb_get_setup(window->c)).data;
+
+	ret = init_xkb(window);
+	if (ret != 0) {
+		MU_PUSH_ERRSTR(err, "Could not initialize XKB Extension, dying");
+		deinit_xkb(window);
+		free(window);
+		return NULL;
+	}
+
+	// FIXME: The XKB Documentation mention using this call to listen to keyboard change events,
+	// but I can't find any documentation on what any of the options mean so...
+	/* cookie = xcb_xkb_select_events_aux(window->c, j */
 
 	window->win = xcb_generate_id(window->c);
 	mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
@@ -109,6 +189,7 @@ void destroy_window(struct mu_window **window)
 		xcb_free_pixmap(w->c, w->pix);
 	if (w->win)
 		xcb_destroy_window(w->c, w->win);
+	deinit_xkb(w);
 	xcb_disconnect(w->c);
 
 	free(w);
@@ -182,7 +263,7 @@ static int reload_with_offset(struct mu_error **err, struct mu_window *window, s
 		window->yoff = 0;
 
 	xcb_clear_area(window->c, 0, window->win, 0, 0, window->width, window->height);
-	
+
 	return draw_image(err, window, loc, width, height);
 }
 

@@ -6,6 +6,7 @@ Dependencies
 
 A C99 compliant compiler.
 libxcb (and libxcb-image) - https://xcb.freedesktop.org/
+libxxbcommon - https://xkbcommon.org/
 ImageMagick - https://www.imagemagick.org/
 
 pkg-config
@@ -16,7 +17,7 @@ pkg-config, or if your version of a library does not ship the ".pc" files, you
 have to provide the library's build options as arguments to make:
 Example:
 
-	make XCB_CFLAGS="-I/usr/local/include" XCB_LDFLAGS="-L/usr/local/lib -lxcb-image -lxcb"
+	make XCB_CFLAGS="-I/usr/local/include" XCB_LDFLAGS="-L/usr/local/lib -lxcb-image -lxcb -lxkbkommon-x11 -lxkbcommon"
 
 Compilers and Options
 ---------------------

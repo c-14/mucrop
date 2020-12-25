@@ -6,8 +6,8 @@ MAGICK_CFLAGS  = `pkg-config --cflags MagickWand`
 MAGICK_LDFLAGS = `pkg-config --libs MagickWand`
 
 # xcb
-XCB_CFLAGS = `pkg-config --cflags xcb xcb-image`
-XCB_LDFLAGS = `pkg-config --libs xcb xcb-image`
+XCB_CFLAGS = `pkg-config --cflags xcb xcb-image xkbcommon xkbcommon-x11`
+XCB_LDFLAGS = `pkg-config --libs xcb xcb-image xkbcommon xkbcommon-x11`
 
 # custom flags
 EXTRA_CFLAGS  = -std=c99

@@ -17,6 +17,10 @@ struct mu_window {
 	xcb_pixmap_t     pix;
 	xcb_gcontext_t   gc;
 
+	struct xkb_context *xkb;
+	struct xkb_keymap *keymap;
+	struct xkb_state *keyboard_state;
+
 	size_t width;
 	size_t height;
 	int16_t xoff;

@@ -7,6 +7,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <xkbcommon/xkbcommon.h>
+
 #include <MagickWand/MagickWand.h>
 
 #include "window.h"
@@ -54,7 +56,6 @@ struct mucrop_core {
 	MU_PUSH_ERRSTR(errlist, description); \
 	description = (char *) MagickRelinquishMemory(description); \
 }
-
 
 int ping_image(struct mucrop_core *core, const char *filename)
 {
@@ -266,14 +267,16 @@ int handle_buttonpress(struct mucrop_core *core, xcb_button_press_event_t *butto
 
 int handle_keypress(struct mucrop_core *core, xcb_key_press_event_t *key)
 {
-	switch (key->detail) {
-		case 0x35: // q
+	xkb_keysym_t symbol = xkb_state_key_get_one_sym(core->window->keyboard_state, key->detail);
+
+	switch (symbol) {
+		case XKB_KEY_q: // q
 			core->state_flags |= MU_QUIT;
 			break;
-		case 0x3b: // w
+		case XKB_KEY_w: // w
 			core->state_flags |= MU_QUIT | MU_SAVE;
 			break;
-		case 0x42: // ESC
+		case XKB_KEY_Escape: // ESC
 			core->state_flags &= ~MU_COMP;
 			return clear_bbox(&core->errlist, core->window, NULL, NULL);
 		default:
@@ -413,8 +416,9 @@ int main(int argc, const char *argv[])
 fail:
 	ret |= process_errors(core.errlist);
 	free_errlist(&core.errlist);
-	if (core.window)
+	if (core.window) {
 		destroy_window(&core.window);
+	}
 
 	/* MagickRelinquishMemory(core.image); */
 	if (core.wand) {
